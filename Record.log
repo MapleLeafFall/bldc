@@ -1,0 +1,31 @@
+20210228:
+1、和硬件版本有关的编译、下载问题：conf_general.h修改
+（1）默认硬件版本为hw_60MK4：不正确，实际板子为hw_4.12；
+（2）修改硬件版本为hw_40：编译报错；
+（3）修改硬件版本为hw_410：下载完不能连接；
+
+2、从main.c开始看是哪里的代码问题：
+（1）hw_410：
+main() ->
+	halInit() -> //初始化使能的HAL驱动，和板子专用的功能（实际为空）
+        osalInit();
+        hal_lld_init(); // /* Platform low level initializations.*/
+        palInit(&pal_default_config); //使能GPIOA-G的时钟
+        canInit();
+        i2cInit();
+        icuInit(); //初始化TIM3、TIM9为ICU（Input Capture Unit），作为编码器接口
+        sdInit();
+        spiInit();
+        usbInit() ->
+            usb_lld_init() -> //...\OTGv1\usb_lld.c
+                usbObjectInit(&USBD1) //给USB结构体成员清零
+        sduInit(); //Serial Driver on USB?（实际为空）
+        boardInit(); //（实际为空）
+        stInit(); //初始化FOC的TIM2：计数清零、debug时停止输出、分频系数48M/50k(?)
+	chSysInit();
+
+3、已解决：
+(1)usb插上电脑有不停的叮咚响，以为是接触不良、供电不足，实际不是。
+(2)用STLINK Utility界面工具擦除flash（Erase Chip）、下载（Program&Verify）王广乙的VESC_default.bin即可。（甚至不用重新拔插usb）
+(3)而原版代码bldc的编译文件BLDC_4_ChibiOS.bin烧进去后连接失败；
+
